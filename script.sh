@@ -16,7 +16,6 @@ help() {
   echo "\nThis script provides file size information."
   echo "\nNotes:"
   echo "    - Supports filenames with spaces and special characters."
-  echo "    - Use '--' to separate options from filenames starting with '-'."
 }
 
 # Error handling
@@ -35,39 +34,51 @@ show_total_only=false
 files=()
 total_size=0
 exit_code=0
+found_double_dash=false
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
-  case "$1" in
-    -s)
-      show_sizes=true
-      ;;
-    -S)
-      show_total_only=true
-      ;;
-    --usage)
-      usage
-      exit 0
-      ;;
-    --help)
-      help
-      exit 0
-      ;;
-    --)
-      shift
-      while [[ $# -gt 0 ]]; do
+  if [[ "$1" == "--" ]]; then
+    found_double_dash=true
+    shift
+    continue
+  fi
+
+  if [[ $found_double_dash == true ]]; then
+    # After '--', treat everything as filenames, including options
+    files+=("$1")
+  else
+    case "$1" in
+      -s)
+        show_sizes=true
+        ;;
+      -S)
+        if [[ $found_double_dash == true ]]; then
+          files+=("$1")  # Treat -S as a filename after '--'
+        else
+          show_total_only=true
+        fi
+        ;;
+      --usage)
+        usage
+        exit 0
+        ;;
+      --help)
+        help
+        exit 0
+        ;;
+      -* )
+        if [[ $found_double_dash == true ]]; then
+          files+=("$1")  # Treat all options as filenames after '--'
+        else
+          error_unsupported_option "$1"
+        fi
+        ;;
+      * )
         files+=("$1")
-        shift
-      done
-      break
-      ;;
-    -* )
-      error_unsupported_option "$1"
-      ;;
-    * )
-      files+=("$1")
-      ;;
-  esac
+        ;;
+    esac
+  fi
   shift
 done
 
